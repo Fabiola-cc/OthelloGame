@@ -1,13 +1,14 @@
 import copy
 import random
 
+
 DIRECTIONS = [(-1, -1), (-1, 0), (-1, 1),
               (0, -1),          (0, 1),
               (1, -1),  (1, 0), (1, 1)]
 
 OPENING_MOVES = [(2, 3), (3, 2), (4, 5), (5, 4)]
 
-def decide_move(board, my_symbol):
+def decide_move2(board, my_symbol):
     if is_initial_board(board):
         valid_opening = [move for move in OPENING_MOVES if is_valid_move(board, move[0], move[1], my_symbol)]
         if valid_opening:

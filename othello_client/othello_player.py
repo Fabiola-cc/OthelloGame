@@ -3,6 +3,7 @@ import random
 import sys
 import time
 import copy
+from diego_player import decide_move2
 
 ### Public IP Server
 ### Testing Server
@@ -283,6 +284,9 @@ class OthelloPlayer():
         else:
             # Fallback a un movimiento aleatorio si algo falla
             return random.choice(valid_moves)
+        
+def AI_MOVE2(self, board):
+        return decide_move2(board, self.current_symbol)
 
 if __name__ == '__main__':
     script_name = sys.argv[0]
