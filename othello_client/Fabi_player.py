@@ -1,9 +1,5 @@
-'''
-    estrategia basada en los otros jugadores
-'''
-import copy
 import random
-
+import time
 
 DIRECTIONS = [(-1, -1), (-1, 0), (-1, 1),
               (0, -1),          (0, 1),
@@ -11,7 +7,6 @@ DIRECTIONS = [(-1, -1), (-1, 0), (-1, 1),
 
 OPENING_MOVES = [(2, 3), (3, 2), (4, 5), (5, 4)]
 
-# Pesos estáticos mejorados para posiciones del tablero
 POSITION_WEIGHTS = [
     [ 4, -3,  2,  2,  2,  2, -3,  4],
     [-3, -4, -1, -1, -1, -1, -4, -3],
@@ -23,24 +18,34 @@ POSITION_WEIGHTS = [
     [ 4, -3,  2,  2,  2,  2, -3,  4]
 ]
 
-# Esquinas del tablero
 CORNERS = [(0, 0), (0, 7), (7, 0), (7, 7)]
 
 def decide_move2(board, my_symbol):
+    start = time.time()
+
+    count = sum(cell != 0 for row in board for cell in row)
+    depth = 3
+    if count >= 54:
+        depth = 5
+    elif count >= 36:
+        depth = 4
+
     if is_initial_board(board):
         valid_opening = [move for move in OPENING_MOVES if is_valid_move(board, move[0], move[1], my_symbol)]
         if valid_opening:
             return random.choice(valid_opening)
-    
-    _, best_move = minimax(board, depth=3, maximizing_player=True, my_symbol=my_symbol, alpha=float('-inf'), beta=float('inf'))
-    
+
+    _, best_move = minimax(board, depth, True, my_symbol, float('-inf'), float('inf'))
+
     if best_move is None:
         valid_moves = get_valid_moves(board, my_symbol)
         if valid_moves:
-            return valid_moves[0]  
+            return valid_moves[0]
         else:
-            return None 
-    
+            return None
+
+    elapsed = time.time() - start
+    print(f"⏱️ Tiempo de decisión: {elapsed:.3f} segundos")
     return best_move
 
 def minimax(board, depth, maximizing_player, my_symbol, alpha, beta):
@@ -49,21 +54,19 @@ def minimax(board, depth, maximizing_player, my_symbol, alpha, beta):
     if depth == 0 or game_over(board):
         return evaluate_board(board, my_symbol), None
 
-    valid_moves = get_valid_moves(board, my_symbol if maximizing_player else opponent)
+    current_player = my_symbol if maximizing_player else opponent
+    valid_moves = get_valid_moves(board, current_player)
     if not valid_moves:
         return evaluate_board(board, my_symbol), None
 
-    valid_moves.sort(
-        key=lambda m: POSITION_WEIGHTS[m[0]][m[1]],
-        reverse=maximizing_player
-    )
+    valid_moves.sort(key=lambda m: POSITION_WEIGHTS[m[0]][m[1]], reverse=maximizing_player)
 
     best_move = None
 
     if maximizing_player:
         max_eval = float('-inf')
         for move in valid_moves:
-            new_board = apply_move(board, move, my_symbol)
+            new_board = apply_move(board, move, current_player)
             eval, _ = minimax(new_board, depth - 1, False, my_symbol, alpha, beta)
             if eval > max_eval:
                 max_eval = eval
@@ -75,7 +78,7 @@ def minimax(board, depth, maximizing_player, my_symbol, alpha, beta):
     else:
         min_eval = float('inf')
         for move in valid_moves:
-            new_board = apply_move(board, move, opponent)
+            new_board = apply_move(board, move, current_player)
             eval, _ = minimax(new_board, depth - 1, True, my_symbol, alpha, beta)
             if eval < min_eval:
                 min_eval = eval
@@ -98,29 +101,20 @@ def evaluate_board(board, my_symbol):
             elif board[r][c] == opponent:
                 position_score -= POSITION_WEIGHTS[r][c]
 
-    # Evaluación de esquinas
     for r, c in CORNERS:
         if board[r][c] == my_symbol:
             corner_score += 25
         elif board[r][c] == opponent:
             corner_score -= 25
 
-    # Movilidad (cantidad de movimientos disponibles)
     my_moves = get_valid_moves(board, my_symbol)
     opp_moves = get_valid_moves(board, opponent)
     mobility_score = len(my_moves) - len(opp_moves)
 
-    # Combinar todo
-    total_score = position_score + (3 * corner_score) + (2 * mobility_score)
-    return total_score
+    return position_score + (3 * corner_score) + (2 * mobility_score)
 
 def get_valid_moves(board, symbol):
-    valid_moves = []
-    for r in range(8):
-        for c in range(8):
-            if is_valid_move(board, r, c, symbol):
-                valid_moves.append((r, c))
-    return valid_moves
+    return [(r, c) for r in range(8) for c in range(8) if is_valid_move(board, r, c, symbol)]
 
 def is_valid_move(board, row, col, symbol):
     if board[row][col] != 0:
@@ -135,8 +129,7 @@ def is_valid_move(board, row, col, symbol):
             elif board[r][c] == symbol:
                 if found_opponent:
                     return True
-                else:
-                    break
+                break
             else:
                 break
             r += dr
@@ -144,7 +137,8 @@ def is_valid_move(board, row, col, symbol):
     return False
 
 def apply_move(board, move, symbol):
-    new_board = copy.deepcopy(board)
+    # Copia superficial rápida
+    new_board = [row[:] for row in board]
     r, c = move
     new_board[r][c] = symbol
     opponent = -symbol
@@ -166,9 +160,7 @@ def apply_move(board, move, symbol):
     return new_board
 
 def is_initial_board(board):
-    count = sum(cell != 0 for row in board for cell in row)
-    return count <= 4  
-
+    return sum(cell != 0 for row in board for cell in row) <= 4
 
 def game_over(board):
     return not (get_valid_moves(board, 1) or get_valid_moves(board, -1))
